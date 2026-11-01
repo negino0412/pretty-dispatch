@@ -129,33 +129,12 @@ using (
 
 create policy dispatch_insert_by_role
 on public.dispatch_jobs for insert to authenticated
-with check (
-  exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.approved = true
-      and me.role in ('admin','staff')
-  )
-);
+with check ((select public.current_user_is_staff_or_admin()));
 
 create policy dispatch_update_by_role
 on public.dispatch_jobs for update to authenticated
-using (
-  exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.approved = true
-      and me.role in ('admin','staff')
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.approved = true
-      and me.role in ('admin','staff')
-  )
-);
+using ((select public.current_user_is_staff_or_admin()))
+with check ((select public.current_user_is_staff_or_admin()));
 
 create policy dispatch_delete_by_role
 on public.dispatch_jobs for delete to authenticated
