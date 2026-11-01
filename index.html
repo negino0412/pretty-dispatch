@@ -45,6 +45,6 @@ function reloadLatest(){if(appReloading)return;appReloading=true;$('appUpdateSta
 async function checkLatest(force=false){if(!('serviceWorker'in navigator)){if(force)reloadLatest();return}try{if(!appReg)appReg=await navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'});await appReg.update();$('appUpdateState').textContent='更新確認：'+new Date().toLocaleTimeString('ja-JP');if(force)reloadLatest()}catch(e){$('appUpdateState').textContent='更新確認に失敗。通信状態を確認してください';if(force)reloadLatest()}}
 navigator.serviceWorker?.addEventListener('controllerchange',()=>{if(!appReloading){appReloading=true;location.reload()}});
 $('appRefresh').onclick=()=>checkLatest(true);
-checkLatest(false);setInterval(()=>{if(document.visibilityState==='visible')checkLatest(false)},30000);
+checkLatest(false);setInterval(()=>{if(document.visibilityState==='visible')checkLatest(false)},10000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkLatest(false)});
 </script></body></html>
