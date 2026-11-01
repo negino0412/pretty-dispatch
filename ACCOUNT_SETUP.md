@@ -1,37 +1,31 @@
-# Pretty Dispatch: role separation setup
+# Pretty Dispatch account setup (password-only)
 
-## Current status
-This repository change prepares the database schema and row-level security (RLS). It does not by itself configure your Supabase project, send SMS, create Auth users, or deploy Edge Functions.
+## Login identifiers
+- Admin: phone number + password. The phone number is used as a login ID alias; no SMS is sent.
+- Operations staff: staff ID + password.
+- Driver: driver name/login ID + password.
+- Admin issues staff and driver accounts. No self-registration.
 
-Initial administrator phone: 07024632256 (E.164: +817024632256).
+## Step 1 — create the initial administrator
+In Supabase Dashboard > Authentication > Users, create a user with:
+- Email: `admin_07024632256@pretty-dispatch.invalid`
+- Password: choose a unique password of at least 12 characters.
+- Confirm the email/user if the dashboard asks.
 
-## Required order
+This is an internal login alias, not a real mailbox. The app's phone login screen converts 07024632256 to this alias. Do not enable Phone/SMS authentication or enter Twilio credentials.
 
-1. In Supabase Dashboard, open Authentication > Providers > Phone and enable phone authentication.
-2. Configure an SMS provider (for example Twilio) and its credentials in Supabase. Never put provider secrets or the service-role key in this repository or in the browser.
-3. Authenticate the initial administrator using SMS with +817024632256. Confirm that the user appears under Authentication > Users and that the phone is verified.
-4. Back up the current database, especially public.dispatch_jobs.
-5. Open SQL Editor and run supabase_roles_setup.sql.
-6. Check the SQL result. The promotion UPDATE must affect exactly one profile. If it affects zero rows, stop and verify the phone-auth user and E.164 phone. Do not proceed as if admin setup succeeded.
-7. Confirm the profile row has role=admin and approved=true.
-8. Do not use the current app's old email/password login after enabling strict RLS until the role-aware client update is deployed.
+## Step 2 — database migration
+Back up the database first. Run `supabase_roles_setup.sql` in Supabase SQL Editor. Then verify that the profile for the user above has role=admin and approved=true. If the promotion update affected zero rows, stop and check the exact Auth email.
 
-## Role rules prepared by the migration
+## Step 3 — deploy account provisioning
+Deploy `supabase/functions/admin-create-account/index.ts` as Edge Function `admin-create-account`.
+Set Edge Function secrets:
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
 
-- admin: all jobs; can delete jobs; can administer profiles.
-- staff: all jobs; can create/update jobs; cannot delete jobs.
-- driver: can read only rows whose driver_user_id equals their own Auth user ID; no job writes.
-- pending/unapproved: no job access.
-- New Auth users default to pending. A user cannot assign themselves a role from the browser.
+The service-role key must remain a server secret and must never be put in index.html or shared in chat.
 
-## Important unfinished work
+The function permits only an authenticated, approved admin to issue staff or driver accounts. It requires passwords of at least 12 characters. Login IDs are unique.
 
-The current browser app still uses a shared email/password login and free-text driver field. It has not yet been converted to phone/SMS staff login, username/password driver login, admin-issued accounts, or per-driver job filtering. Do not onboard drivers or staff until that client and trusted account-provisioning function are implemented and deployed.
-
-The driver username/password flow requires a server-side Supabase Edge Function using SUPABASE_SERVICE_ROLE_KEY stored as a server secret. Never expose that key in index.html. Staff phone invitations and account approval also require a server-side provisioning flow. Web Push notifications require a separate VAPID configuration and push-sending function; Supabase Realtime is not push while the app is closed.
-
-## Existing data
-The migration intentionally keeps the existing text driver column and adds driver_user_id. Existing assignments need explicit mapping to the correct driver profile. No automatic name matching is performed, because that could expose a job to the wrong driver.
-
-## Rollback
-Do not drop profiles or driver_user_id as a casual rollback. Restore from your database backup or have the migration reviewed before changing RLS policies.
+## Remaining app work
+The existing index.html has not yet been changed to role-specific login forms, role-aware controls, filtered driver lists, or driver assignment IDs. Until that frontend update is deployed and tested, do not issue accounts or run the new RLS migration on a live production database. The current app is not yet compatible with the new login scheme.
