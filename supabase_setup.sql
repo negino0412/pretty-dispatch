@@ -17,7 +17,8 @@ alter table public.dispatch_jobs
  add column if not exists options text not null default '',
  add column if not exists customer text not null default '',
  add column if not exists phone text not null default '',
- add column if not exists history text not null default '';
+ add column if not exists history text not null default '',
+ add column if not exists catch_done boolean not null default false;
 alter table public.dispatch_jobs enable row level security;
 drop policy if exists dispatch_select_staff on public.dispatch_jobs;
 drop policy if exists dispatch_insert_staff on public.dispatch_jobs;
