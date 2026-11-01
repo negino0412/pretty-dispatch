@@ -50,6 +50,13 @@ create trigger on_auth_user_created_pretty_dispatch
 after insert or update of phone on auth.users
 for each row execute function public.handle_new_auth_user();
 
+-- Backfill the profile if the Auth user was created before this migration was run.
+insert into public.profiles (user_id, role, display_name, approved)
+select u.id, 'pending', '管理者', false
+from auth.users u
+where lower(u.email) = 'admin_07024632256@pretty-dispatch.invalid'
+on conflict (user_id) do nothing;
+
 -- Promote the exact initial administrator login created manually in Supabase Auth.
 -- Create user with email admin_07024632256@pretty-dispatch.invalid first.
 update public.profiles p
