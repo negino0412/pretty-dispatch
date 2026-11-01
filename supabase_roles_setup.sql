@@ -1,6 +1,7 @@
 -- Pretty Dispatch role separation (phase 1)
--- Run only after the initial administrator has completed SMS phone authentication.
--- Japan phone number 07024632256 is stored in Supabase Auth in E.164 form: +817024632256.
+-- SMS is NOT used. The administrator signs in with a phone-number alias and password.
+-- Create the initial Auth user in Dashboard using email admin_07024632256@pretty-dispatch.invalid,
+-- then run this migration to promote that exact account.
 -- IMPORTANT: Back up dispatch_jobs before running this migration.
 
 create extension if not exists pgcrypto;
@@ -9,7 +10,7 @@ create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   role text not null default 'pending' check (role in ('pending','admin','staff','driver')),
   display_name text not null default '',
-  phone text,
+  phone text,\n  login_id text unique,
   approved boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -46,14 +47,14 @@ create trigger on_auth_user_created_pretty_dispatch
 after insert or update of phone on auth.users
 for each row execute function public.handle_new_auth_user();
 
--- Promote ONLY the verified phone account supplied by the owner.
--- If this updates 0 rows, do not proceed: first complete SMS authentication
--- with that phone number, then rerun this UPDATE.
+-- Promote the exact initial administrator login created manually in Supabase Auth.
+-- Create user with email admin_07024632256@pretty-dispatch.invalid first.
 update public.profiles p
-set role = 'admin', approved = true, phone = u.phone, updated_at = now()
+set role = 'admin', approved = true, phone = '07024632256',
+    login_id = '07024632256', updated_at = now()
 from auth.users u
 where p.user_id = u.id
-  and u.phone = '+817024632256';
+  and lower(u.email) = 'admin_07024632256@pretty-dispatch.invalid';
 
 -- SECURITY DEFINER helpers avoid recursive RLS checks on profiles.
 create or replace function public.current_user_is_admin()
