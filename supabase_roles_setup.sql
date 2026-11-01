@@ -55,6 +55,40 @@ from auth.users u
 where p.user_id = u.id
   and u.phone = '+817024632256';
 
+-- SECURITY DEFINER helpers avoid recursive RLS checks on profiles.
+create or replace function public.current_user_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select exists (
+    select 1 from public.profiles p
+    where p.user_id = (select auth.uid())
+      and p.role = 'admin' and p.approved = true
+  );
+$;
+
+create or replace function public.current_user_is_staff_or_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select exists (
+    select 1 from public.profiles p
+    where p.user_id = (select auth.uid())
+      and p.role in ('admin','staff') and p.approved = true
+  );
+$;
+
+revoke all on function public.current_user_is_admin() from public;
+revoke all on function public.current_user_is_staff_or_admin() from public;
+grant execute on function public.current_user_is_admin() to authenticated;
+grant execute on function public.current_user_is_staff_or_admin() to authenticated;
+
 alter table public.profiles enable row level security;
 alter table public.dispatch_jobs enable row level security;
 
@@ -74,42 +108,18 @@ drop policy if exists profiles_update_admin_only on public.profiles;
 
 create policy profiles_select_self_or_admin
 on public.profiles for select to authenticated
-using (
-  user_id = (select auth.uid())
-  or exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.role = 'admin' and me.approved = true
-  )
-);
+using (user_id = (select auth.uid()) or (select public.current_user_is_admin()));
 
 -- Profiles are provisioned by a trusted server/admin process, never by clients.
 create policy profiles_update_admin_only
 on public.profiles for update to authenticated
-using (
-  exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.role = 'admin' and me.approved = true
-  )
-)
-with check (
-  exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.role = 'admin' and me.approved = true
-  )
-);
+using ((select public.current_user_is_admin()))
+with check ((select public.current_user_is_admin()));
 
 create policy dispatch_select_by_role
 on public.dispatch_jobs for select to authenticated
 using (
-  exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.approved = true
-      and me.role in ('admin','staff')
-  )
+  (select public.current_user_is_staff_or_admin())
   or driver_user_id = (select auth.uid())
 );
 
@@ -146,11 +156,7 @@ with check (
 create policy dispatch_delete_by_role
 on public.dispatch_jobs for delete to authenticated
 using (
-  exists (
-    select 1 from public.profiles me
-    where me.user_id = (select auth.uid())
-      and me.role = 'admin' and me.approved = true
-  )
+  (select public.current_user_is_admin())
 );
 
 -- Existing text-only driver assignments must be linked to driver_user_id
