@@ -47,7 +47,7 @@ $$;
 
 drop trigger if exists on_auth_user_created_pretty_dispatch on auth.users;
 create trigger on_auth_user_created_pretty_dispatch
-after insert or update of phone on auth.users
+after insert or update on auth.users
 for each row execute function public.handle_new_auth_user();
 
 -- Backfill the profile if the Auth user was created before this migration was run.
