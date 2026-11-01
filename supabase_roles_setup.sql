@@ -10,11 +10,14 @@ create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   role text not null default 'pending' check (role in ('pending','admin','staff','driver')),
   display_name text not null default '',
-  phone text,\n  login_id text unique,
+  phone text,
+  login_id text unique,
   approved boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists login_id text unique;
 
 alter table public.dispatch_jobs
   add column if not exists driver_user_id uuid references public.profiles(user_id) on delete set null;
