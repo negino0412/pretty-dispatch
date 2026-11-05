@@ -121,6 +121,15 @@ create policy profiles_select_self_or_admin
 on public.profiles for select to authenticated
 using (user_id = (select auth.uid()) or (select public.current_user_is_admin()));
 
+-- Staff can list approved drivers for assignment, but cannot read other staff profiles.
+drop policy if exists profiles_select_drivers_for_staff on public.profiles;
+create policy profiles_select_drivers_for_staff
+on public.profiles for select to authenticated
+using (
+  role = 'driver' and approved = true
+  and (select public.current_user_is_staff_or_admin())
+);
+
 -- Profiles are provisioned by a trusted server/admin process, never by clients.
 create policy profiles_update_admin_only
 on public.profiles for update to authenticated
