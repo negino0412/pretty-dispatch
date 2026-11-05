@@ -73,13 +73,13 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1 from public.profiles p
     where p.user_id = (select auth.uid())
       and p.role = 'admin' and p.approved = true
   );
-$;
+$$;
 
 create or replace function public.current_user_is_staff_or_admin()
 returns boolean
@@ -87,13 +87,13 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1 from public.profiles p
     where p.user_id = (select auth.uid())
       and p.role in ('admin','staff') and p.approved = true
   );
-$;
+$$;
 
 revoke all on function public.current_user_is_admin() from public;
 revoke all on function public.current_user_is_staff_or_admin() from public;
