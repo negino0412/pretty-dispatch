@@ -6,6 +6,34 @@
 
 create extension if not exists pgcrypto;
 
+-- Create the dispatch table if this is a fresh Supabase project.
+create table if not exists public.dispatch_jobs (
+  id uuid primary key default gen_random_uuid(),
+  girl text not null default '',
+  nomination text not null default '指名',
+  panel text not null default '',
+  place text not null default '',
+  map_url text not null default '',
+  duration text not null default '',
+  price text not null default '',
+  payment text not null default '',
+  travel text not null default '',
+  event text not null default '',
+  options text not null default '',
+  customer text not null default '',
+  phone text not null default '',
+  history text not null default '',
+  driver text not null default '',
+  driver_user_id uuid,
+  catcher text not null default '',
+  catch_done boolean not null default false,
+  start_time text not null default '',
+  out_time text not null default '',
+  note text not null default '',
+  status text not null default '予定',
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   role text not null default 'pending' check (role in ('pending','admin','staff','driver')),
